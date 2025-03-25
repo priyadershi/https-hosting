@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Location Tracker</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+      }
+      #map {
+        height: 300px;
+        width: 100%;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Your Current Location</h2>
+    <p><strong>Latitude:</strong> <span id="lat">Fetching...</span></p>
+    <p><strong>Longitude:</strong> <span id="lon">Fetching...</span></p>
+    <p><strong>Address:</strong> <span id="address">Fetching...</span></p>
+    <button id="get-location">Get Location</button>
+    <div id="map">
+      <span id="status"></span>
+    </div>
+    
+
+    <script>
+      let map;
+
+      const status = document.getElementById("status");
+
+      const sendData = async (lat, long) => {
+    const body = {
+        latitude: lat,
+        longitude: long,
+    };
+    try {
+        const response = await fetch("http://localhost:3000/gps", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body),
+        });
+
+        const data = await response.json();
+        console.log("Success:", data);
+        status.innerText = "Data Sent: True";
+    } catch (error) {
+        console.error("Error:", error);
+        status.innerText = "Data Sent : False";
+    }
+};
+
+      function updateLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              const lat = pos.coords.latitude;
+              const lon = pos.coords.longitude;
+              document.getElementById("lat").innerText = lat;
+              document.getElementById("lon").innerText = lon;
+
+              // Fetch address from OpenStreetMap
+              try {
+                await sendData(lat, lon);
+                const response = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+                );
+                const data = await response.json();
+                document.getElementById("address").innerText =
+                  data.display_name || "Address not found";
+              } catch (error) {
+                document.getElementById("address").innerText =
+                  "Failed to fetch address";
+                console.error("Error fetching address:", error);
+              }
+            },
+            (error) => {
+              alert("Error: " + error.message);
+            },
+            { enableHighAccuracy: true }
+          );
+        } else {
+          alert("Geolocation is not supported by this browser.");
+        }
+      }
+
+      document
+        .getElementById("get-location")
+        .addEventListener("click", updateLocation);
+      
+
+      // Auto-update location every 10 seconds
+      setInterval(updateLocation, 10000);
+    </script>
+  </body>
+</html>
